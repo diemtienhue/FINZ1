@@ -1,0 +1,370 @@
+
+import React, { useState } from 'react';
+import { INITIAL_PROJECTS, MOCK_NEWS, MOCK_CHANNEL_RESOURCES, MOCK_TEMPLATES } from './constants';
+import { Project, NewsItem, ChannelResource, LandingPageTemplate, TabType } from './types';
+import Layout from './components/Layout';
+import ProjectCard from './components/ProjectCard';
+import ProjectPopup from './components/ProjectPopup';
+import LoanCalculator from './components/LoanCalculator';
+import DTITool from './components/DTITool';
+import AdminDashboard from './components/AdminDashboard';
+import LoginPage from './components/LoginPage';
+import SupabaseTest from './components/SupabaseTest';
+import { CheckCircle2, TrendingUp, ShieldCheck, Facebook, FileText, Share2, Users, ChevronRight, ExternalLink, ClipboardCheck, Monitor, Palette } from 'lucide-react';
+
+function App() {
+  const [activeTab, setActiveTab] = useState<TabType | 'ADMIN_LOGIN'>('HOME');
+  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  // Lift state for News, Channel Resources, and Templates to App level
+  const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS);
+  const [channelResources, setChannelResources] = useState<ChannelResource[]>(MOCK_CHANNEL_RESOURCES);
+  const [templates, setTemplates] = useState<LandingPageTemplate[]>(MOCK_TEMPLATES);
+  
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  // Triggered when clicking the Admin button in Layout
+  const handleAdminClick = () => {
+    if (isAdminLoggedIn) {
+      setActiveTab('ADMIN');
+    } else {
+      setActiveTab('ADMIN_LOGIN');
+    }
+  };
+
+  const handleLoginSuccess = () => {
+    setIsAdminLoggedIn(true);
+    setActiveTab('ADMIN');
+  };
+
+  const handleLogout = () => {
+    setIsAdminLoggedIn(false);
+    setActiveTab('HOME');
+  };
+
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject(project);
+  };
+
+  const renderChannelIcon = (name?: string) => {
+    switch(name) {
+      case 'Users': return <Users className="w-5 h-5 mr-2 text-green-500 shrink-0"/>;
+      case 'FileText': return <FileText className="w-5 h-5 mr-2 text-finz-highlight shrink-0"/>;
+      case 'Share2': return <Share2 className="w-5 h-5 mr-2 text-finz-accent shrink-0"/>;
+      default: return <CheckCircle2 className="w-5 h-5 mr-2 text-gray-400 shrink-0"/>;
+    }
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'ADMIN_LOGIN':
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onBack={() => setActiveTab('HOME')} />;
+
+      case 'ADMIN':
+        if (!isAdminLoggedIn) {
+           return <LoginPage onLoginSuccess={handleLoginSuccess} onBack={() => setActiveTab('HOME')} />;
+        }
+        return (
+          <AdminDashboard 
+            projects={projects} 
+            setProjects={setProjects} 
+            news={news}
+            setNews={setNews}
+            channelResources={channelResources}
+            setChannelResources={setChannelResources}
+            templates={templates}
+            setTemplates={setTemplates}
+            onLogout={handleLogout} 
+          />
+        );
+      
+      case 'CALCULATOR':
+        return <LoanCalculator />;
+      
+      case 'DTI':
+        return <DTITool />;
+      
+      case 'BUILD_CHANNEL':
+        return (
+          <div className="text-slate-900 dark:text-white max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold mb-6">Xây dựng kênh tài chính</h2>
+            <div className="space-y-6">
+              {channelResources.length === 0 && <p className="text-gray-500 italic">Chưa có tài liệu nào.</p>}
+              
+              {channelResources.map((item) => (
+                <div key={item.id} className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
+                  <h3 className="text-xl font-semibold text-finz-accent mb-2 flex items-center">
+                    {renderChannelIcon(item.icon_name)}
+                    {item.title}
+                  </h3>
+                  <p className="text-slate-600 dark:text-gray-300 mb-4">{item.description}</p>
+                  
+                  {item.content && (
+                    <div className="bg-gray-50 dark:bg-black/20 p-4 rounded-xl text-sm text-slate-700 dark:text-gray-400 mb-4 border border-gray-100 dark:border-white/5 whitespace-pre-line">
+                      {item.content}
+                    </div>
+                  )}
+
+                  {item.link_url && (
+                    <a href={item.link_url} target="_blank" rel="noreferrer" className="inline-flex items-center px-4 py-2 bg-finz-accent/10 hover:bg-finz-accent/20 text-finz-accent rounded-lg font-medium transition">
+                      <ExternalLink className="w-4 h-4 mr-2" /> Truy cập tài liệu
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-8 p-6 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-2xl border border-purple-500/20 text-center">
+               <h4 className="font-bold text-slate-800 dark:text-white mb-2">Tham gia cộng đồng kín</h4>
+               <p className="text-sm text-gray-500 mb-4">Nhận trọn bộ tài liệu và support 1-1 từ đội ngũ Admin</p>
+               <button className="px-6 py-2 bg-finz-secondary text-white rounded-lg font-bold hover:bg-slate-700 transition">Tham gia ngay</button>
+            </div>
+          </div>
+        );
+
+      case 'LANDING_PAGE':
+        return (
+           <div className="max-w-6xl mx-auto">
+             <div className="text-center mb-10">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">Kho giao diện Phễu bán hàng</h2>
+                <p className="text-slate-600 dark:text-gray-300 max-w-2xl mx-auto">
+                  Các mẫu Landing Page được tối ưu hóa cho chuyển đổi cao, chuyên biệt cho lĩnh vực Tài chính & Bảo hiểm. 
+                  Giúp bạn xây dựng thương hiệu cá nhân chuyên nghiệp.
+                </p>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                {templates.map(template => (
+                  <div key={template.id} className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-slate-700 hover:shadow-2xl transition-all duration-300 group hover:-translate-y-1">
+                    <div className="h-48 overflow-hidden relative">
+                       <img src={template.imageUrl} alt={template.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                       <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white text-xs px-2 py-1 rounded font-bold">{template.category}</div>
+                    </div>
+                    <div className="p-6">
+                       <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{template.title}</h3>
+                       <p className="text-slate-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">{template.description}</p>
+                       <div className="flex gap-2">
+                          <button className="flex-1 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-slate-700 dark:text-gray-300 rounded-lg text-sm font-semibold transition">
+                             Xem trước
+                          </button>
+                          <a href="https://zalo.me/g/axlofr797" target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center py-2 bg-finz-accent hover:bg-sky-600 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+                             Chọn mẫu
+                          </a>
+                       </div>
+                    </div>
+                  </div>
+                ))}
+             </div>
+
+             <div className="p-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl shadow-xl text-center text-white relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-[1px]"></div>
+                <div className="relative z-10">
+                   <Monitor className="w-12 h-12 mx-auto mb-4 text-white/80" />
+                   <h3 className="text-2xl font-bold mb-2">Bạn muốn sở hữu một phễu chuyển đổi để xây tệp khách hàng cho riêng mình?</h3>
+                   <p className="text-blue-100 mb-6 max-w-xl mx-auto">Đăng ký ngay để được đội ngũ kỹ thuật hỗ trợ setup website bán hàng chuẩn SEO, tích hợp Form đăng ký về Zalo/Google Sheet.</p>
+                   <a 
+                     href="https://zalo.me/g/axlofr797" 
+                     target="_blank" 
+                     rel="noreferrer"
+                     className="inline-flex items-center px-8 py-3 bg-white text-blue-600 rounded-full font-bold hover:bg-blue-50 transition shadow-lg"
+                   >
+                     <Palette className="w-5 h-5 mr-2" /> Đăng ký thiết kế
+                   </a>
+                   <p className="text-xs text-blue-200 mt-4 opacity-80">Tham gia nhóm Zalo để được tư vấn chi tiết</p>
+                </div>
+             </div>
+           </div>
+        );
+
+      case 'NEWS':
+        return (
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Tin mới tài chính</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {news.map(item => (
+                <div key={item.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-gray-200 dark:border-slate-700 hover:border-finz-accent transition-all cursor-pointer group">
+                  <div className="h-40 bg-gray-200 dark:bg-gray-700 overflow-hidden relative">
+                    <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"/>
+                    <span className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded font-bold uppercase">{item.category}</span>
+                  </div>
+                  <div className="p-4 flex flex-col h-[calc(100%-160px)]">
+                    <h3 className="text-slate-900 dark:text-white font-bold mb-2 line-clamp-2 text-sm md:text-base group-hover:text-finz-accent transition-colors">{item.title}</h3>
+                    <p className="text-slate-500 dark:text-gray-400 text-xs md:text-sm line-clamp-3 mb-3 flex-1">{item.summary}</p>
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-white/5">
+                       <span className="text-gray-400 text-xs">{item.date}</span>
+                       <span className="text-finz-accent text-xs font-semibold flex items-center">Đọc thêm <ChevronRight className="w-3 h-3 ml-1"/></span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'SUPABASE_TEST':
+        return <SupabaseTest />;
+
+      case 'HOME':
+      default:
+        return (
+          <>
+            {/* Hero Section */}
+            <div className="mb-10 text-center md:text-left">
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-finz-accent/10 dark:to-purple-500/10 border border-blue-100 dark:border-finz-accent/20 rounded-3xl p-6 md:p-10 relative overflow-hidden shadow-sm dark:shadow-none transition-colors">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-200 dark:bg-finz-accent/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-50 dark:opacity-100"></div>
+                <div className="relative z-10">
+                  <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-900 via-blue-700 to-amber-500 filter drop-shadow-sm">
+                      FINZ – ĐIỂM CHẠM TỐI ƯU
+                    </span>
+                  </h1>
+                  <p className="text-slate-600 dark:text-gray-300 text-lg md:max-w-2xl mb-8 font-medium">
+                    Công cụ hỗ trợ Sales tài chính & CTV mở thẻ tín dụng 1-1. Theo dõi khách hàng realtime, giảm lost, tăng tỉ lệ duyệt.
+                  </p>
+                  
+                  {/* Benefits Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 md:max-w-3xl">
+                    <div className="bg-white/60 dark:bg-slate-900/50 p-3 rounded-xl border border-blue-100 dark:border-white/5 flex items-center shadow-sm">
+                      <ShieldCheck className="w-8 h-8 text-green-500 dark:text-green-400 mr-3" />
+                      <div className="text-left">
+                        <div className="text-slate-900 dark:text-white font-bold text-sm">Giảm Lost</div>
+                        <div className="text-slate-500 dark:text-gray-400 text-xs">Theo dõi sát sao</div>
+                      </div>
+                    </div>
+                    <div className="bg-white/60 dark:bg-slate-900/50 p-3 rounded-xl border border-blue-100 dark:border-white/5 flex items-center shadow-sm">
+                      <TrendingUp className="w-8 h-8 text-finz-accent mr-3" />
+                      <div className="text-left">
+                        <div className="text-slate-900 dark:text-white font-bold text-sm">Tăng tỉ lệ duyệt</div>
+                        <div className="text-slate-500 dark:text-gray-400 text-xs">Xây dựng Credit</div>
+                      </div>
+                    </div>
+                     <div className="bg-white/60 dark:bg-slate-900/50 p-3 rounded-xl border border-blue-100 dark:border-white/5 flex items-center shadow-sm">
+                      <CheckCircle2 className="w-8 h-8 text-finz-highlight mr-3" />
+                      <div className="text-left">
+                        <div className="text-slate-900 dark:text-white font-bold text-sm">Thu nhập bền vững</div>
+                        <div className="text-slate-500 dark:text-gray-400 text-xs">Đa dạng dự án</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modern Action Buttons - Uniform Style */}
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center md:justify-start">
+                    <button 
+                       onClick={() => setActiveTab('CALCULATOR')}
+                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                    >
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
+                      <ShieldCheck className="w-5 h-5 mr-2" />
+                      Máy tính Tín chấp
+                    </button>
+                    
+                    <button 
+                       onClick={() => setActiveTab('DTI')}
+                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                    >
+                       <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
+                       <TrendingUp className="w-5 h-5 mr-2" />
+                      Check DTI
+                    </button>
+                    
+                    <a 
+                       href="https://zalo.me/g/axlofr797"
+                       target="_blank"
+                       rel="noreferrer"
+                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                    >
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
+                      <ClipboardCheck className="w-5 h-5 mr-2" /> 
+                      Kiểm tra CIC
+                    </a>
+
+                    {/* Test Supabase Button - Tạm thời để test */}
+                    <button 
+                       onClick={() => setActiveTab('SUPABASE_TEST')}
+                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-500 hover:to-emerald-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                    >
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
+                      <CheckCircle2 className="w-5 h-5 mr-2" /> 
+                      Test Supabase
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Projects Grid */}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center">
+                  <span className="w-1 h-8 bg-finz-highlight rounded-full mr-3"></span>
+                  Dự án Hot 2025
+                </h2>
+                <span className="text-xs text-finz-accent font-medium cursor-pointer hover:underline">Xem tất cả</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.filter(p => p.enabled).sort((a,b) => a.priority - b.priority).map((project) => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    onOpenPopup={handleProjectClick}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Footer Section */}
+            <footer className="border-t border-gray-200 dark:border-slate-800 pt-8 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h3 className="text-slate-900 dark:text-white font-bold mb-4">Về FinZ Ecosystem</h3>
+                  <p className="text-slate-600 dark:text-gray-400 text-xs leading-relaxed max-w-lg mb-3">
+                    Các đối tác được triển khai trên Finz gồm: FE credit (Công ty tài chính ngân hàng Việt nam Thịnh Vượng, VIB (ngân hàng quốc tế VIB), Tnex (Công ty tài chính thuộc MSB) , Homecredit (Công ty tài chính Homecredit, Mfast (Công ty CP Thanh Toán số), Cnext (Công ty CP giải pháp Cnext)
+                  </p>
+                  <p className="text-slate-500 dark:text-gray-500 text-xs italic leading-relaxed max-w-lg">
+                    Công cụ được tạo ra để hỗ trợ sales tài chính tiêu dùng cả về nghiệp vụ và xây dựng hệ thống thực chiến. Không áp dụng cho số đông
+                  </p>
+                </div>
+                <div className="flex flex-col md:items-end">
+                   <h3 className="text-slate-900 dark:text-white font-bold mb-4">Liên hệ hỗ trợ</h3>
+                   <a href="https://zalo.me/0888979809" target="_blank" rel="noreferrer" className="text-finz-accent text-sm mb-2 hover:underline">
+                     Zalo: 0888.979.809
+                   </a>
+                   <a href="#" className="flex items-center text-slate-600 dark:text-gray-400 text-sm hover:text-blue-500 transition-colors">
+                     <Facebook className="w-4 h-4 mr-2" /> Fanpage FinZ
+                   </a>
+                </div>
+              </div>
+              <div className="text-center pt-4 border-t border-gray-200 dark:border-slate-800">
+                <p className="text-slate-500 dark:text-gray-600 text-xs mb-2">© 2025 FinZ Ecosystem. All rights reserved.</p>
+                <p className="text-slate-400 dark:text-gray-700 text-[10px] italic">Nói không với các hình thức tín dụng đen</p>
+              </div>
+            </footer>
+          </>
+        );
+    }
+  };
+
+  return (
+    <Layout 
+      activeTab={activeTab === 'ADMIN_LOGIN' ? 'HOME' : activeTab as TabType} 
+      setActiveTab={(t) => setActiveTab(t)} 
+      onAdminLogin={handleAdminClick}
+      projects={projects}
+      onProjectClick={handleProjectClick}
+    >
+      {renderContent()}
+      
+      {/* Global Project Popup */}
+      {selectedProject && (
+        <ProjectPopup 
+          project={selectedProject} 
+          onClose={() => setSelectedProject(null)} 
+        />
+      )}
+    </Layout>
+  );
+}
+
+export default App;

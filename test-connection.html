@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Connection</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0ea5e9;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+        .info { background: #dbeafe; color: #1e40af; }
+        button {
+            background: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        button:hover { background: #0284c7; }
+        pre {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test Kết nối Supabase</h1>
+        <div id="status"></div>
+        <div id="details"></div>
+        <button onclick="testConnection()">🔄 Kiểm tra lại</button>
+    </div>
+
+    <script type="module">
+        // Import Supabase client (cần chạy từ Vite dev server)
+        // Nếu chạy file này trực tiếp, sẽ cần import từ CDN
+        
+        async function testConnection() {
+            const statusDiv = document.getElementById('status');
+            const detailsDiv = document.getElementById('details');
+            
+            statusDiv.innerHTML = '<div class="status info">Đang kiểm tra...</div>';
+            detailsDiv.innerHTML = '';
+
+            try {
+                // Kiểm tra env variables
+                const url = import.meta.env?.VITE_SUPABASE_URL || '';
+                const key = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+
+                if (!url || !key) {
+                    statusDiv.innerHTML = '<div class="status error">❌ Thiếu cấu hình! Vui lòng kiểm tra file .env.local</div>';
+                    detailsDiv.innerHTML = `
+                        <pre>URL: ${url ? '✅' : '❌'}
+Key: ${key ? '✅' : '❌'}
+
+💡 Hướng dẫn:
+1. Tạo file .env.local trong thư mục gốc
+2. Thêm:
+   VITE_SUPABASE_URL=your_url
+   VITE_SUPABASE_ANON_KEY=your_key
+3. Restart dev server</pre>
+                    `;
+                    return;
+                }
+
+                // Test connection
+                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                const supabase = createClient(url, key);
+
+                const { data, error } = await supabase.from('projects').select('count').limit(1);
+
+                if (error) {
+                    if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+                        statusDiv.innerHTML = '<div class="status warning">✅ Kết nối thành công! (Bảng chưa tồn tại)</div>';
+                        detailsDiv.innerHTML = `
+                            <div class="status info">
+                                <strong>Kết nối:</strong> ✅ Thành công<br>
+                                <strong>Bảng:</strong> ⚠️ Chưa tạo bảng<br>
+                                <strong>Hành động:</strong> Chạy SQL scripts trong SUPABASE_SETUP.md
+                            </div>
+                        `;
+                    } else {
+                        statusDiv.innerHTML = '<div class="status error">❌ Lỗi: ' + error.message + '</div>';
+                        detailsDiv.innerHTML = `<pre>${JSON.stringify(error, null, 2)}</pre>`;
+                    }
+                } else {
+                    statusDiv.innerHTML = '<div class="status success">✅ Kết nối Supabase thành công!</div>';
+                    detailsDiv.innerHTML = `
+                        <div class="status success">
+                            <strong>Kết nối:</strong> ✅ Thành công<br>
+                            <strong>Database:</strong> ✅ Có thể truy vấn<br>
+                            <strong>Trạng thái:</strong> Sẵn sàng sử dụng!
+                        </div>
+                    `;
+                }
+
+            } catch (err) {
+                statusDiv.innerHTML = '<div class="status error">❌ Lỗi: ' + err.message + '</div>';
+                detailsDiv.innerHTML = `<pre>${err.stack}</pre>`;
+            }
+        }
+
+        // Expose to global scope
+        window.testConnection = testConnection;
+        
+        // Auto test on load
+        testConnection();
+    </script>
+</body>
+</html>
+
+
