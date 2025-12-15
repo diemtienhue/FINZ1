@@ -1,7 +1,14 @@
 
 import React, { useState } from 'react';
 import { Project, NewsItem, ChannelResource, LandingPageTemplate } from '../types';
-import { Save, LogOut, Edit, Eye, EyeOff, Plus, Trash2, ArrowLeft, Layers, Settings, Database, AlertCircle, Newspaper, PenTool, ExternalLink, Search, Upload, Image as ImageIcon, Layout as LayoutIcon, CheckCircle2 } from 'lucide-react';
+import { Save, LogOut, Edit, Eye, EyeOff, Plus, Trash2, ArrowLeft, Layers, Settings, Database, AlertCircle, Newspaper, PenTool, ExternalLink, Search, Upload, Image as ImageIcon, Layout as LayoutIcon, CheckCircle2, Loader2 } from 'lucide-react';
+import { 
+  getAllProjects, getNews, getChannelResources, getTemplates,
+  createProject, updateProject, deleteProject as deleteProjectDb, toggleProjectStatus as toggleProjectStatusDb,
+  createNews, updateNews, deleteNews as deleteNewsDb,
+  createChannelResource, updateChannelResource, deleteChannelResource as deleteChannelDb,
+  createTemplate, updateTemplate, deleteTemplate as deleteTemplateDb
+} from '../lib/supabaseHelpers';
 
 interface AdminDashboardProps {
   projects: Project[];
@@ -24,6 +31,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const [activeView, setActiveView] = useState<'PROJECTS' | 'NEWS' | 'CHANNEL' | 'TEMPLATES' | 'SETTINGS'>('PROJECTS');
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
   // State for different edit forms
@@ -90,25 +98,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveProject = () => {
-    if (projectForm) {
-      if (projects.find(p => p.id === projectForm.id)) {
-         setProjects(prev => prev.map(p => p.id === projectForm.id ? projectForm : p));
+  const refreshProjects = async () => {
+    const fresh = await getAllProjects();
+    setProjects(fresh);
+  };
+
+  const handleSaveProject = async () => {
+    if (!projectForm) return;
+    setIsSaving(true);
+    try {
+      const exists = projects.find(p => p.id === projectForm.id);
+      const payload = { ...projectForm, updated_at: new Date().toISOString() };
+      if (exists) {
+        await updateProject(projectForm.id, payload);
       } else {
-         setProjects(prev => [...prev, projectForm]);
+        await createProject(payload as any);
       }
+      await refreshProjects();
       resetForms();
       alert("Đã lưu dự án thành công!");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const toggleProjectStatus = (id: string) => {
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
+  const toggleProjectStatus = async (id: string) => {
+    const target = projects.find(p => p.id === id);
+    if (!target) return;
+    await toggleProjectStatusDb(id, !target.enabled);
+    await refreshProjects();
   };
 
-  const handleDeleteProject = (id: string) => {
+  const handleDeleteProject = async (id: string) => {
     if(window.confirm("Bạn có chắc chắn muốn xóa dự án này không?")) {
-      setProjects(prev => prev.filter(p => p.id !== id));
+      await deleteProjectDb(id);
+      await refreshProjects();
     }
   }
 
@@ -155,21 +179,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveNews = () => {
-    if (newsForm) {
-      if (news.find(n => n.id === newsForm.id)) {
-        setNews(prev => prev.map(n => n.id === newsForm.id ? newsForm : n));
+  const refreshNews = async () => {
+    const fresh = await getNews();
+    setNews(fresh);
+  };
+
+  const handleSaveNews = async () => {
+    if (!newsForm) return;
+    setIsSaving(true);
+    try {
+      const exists = news.find(n => n.id === newsForm.id);
+      if (exists) {
+        await updateNews(newsForm.id, { ...newsForm, image_url: newsForm.imageUrl });
       } else {
-        setNews(prev => [...prev, newsForm]);
+        await createNews({ ...newsForm, image_url: newsForm.imageUrl } as any);
       }
+      await refreshNews();
       resetForms();
       alert("Đã lưu bài viết!");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteNews = (id: string) => {
+  const handleDeleteNews = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tin này?")) {
-      setNews(prev => prev.filter(n => n.id !== id));
+      await deleteNewsDb(id);
+      await refreshNews();
     }
   };
 
@@ -191,21 +227,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveChannel = () => {
-    if (channelForm) {
-      if (channelResources.find(c => c.id === channelForm.id)) {
-        setChannelResources(prev => prev.map(c => c.id === channelForm.id ? channelForm : c));
+  const refreshChannels = async () => {
+    const fresh = await getChannelResources();
+    setChannelResources(fresh);
+  };
+
+  const handleSaveChannel = async () => {
+    if (!channelForm) return;
+    setIsSaving(true);
+    try {
+      const exists = channelResources.find(c => c.id === channelForm.id);
+      if (exists) {
+        await updateChannelResource(channelForm.id, channelForm);
       } else {
-        setChannelResources(prev => [...prev, channelForm]);
+        await createChannelResource(channelForm as any);
       }
+      await refreshChannels();
       resetForms();
       alert("Đã lưu tài liệu!");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteChannel = (id: string) => {
+  const handleDeleteChannel = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tài liệu này?")) {
-      setChannelResources(prev => prev.filter(c => c.id !== id));
+      await deleteChannelDb(id);
+      await refreshChannels();
     }
   };
 
@@ -228,21 +276,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveTemplate = () => {
-    if (templateForm) {
-      if (templates.find(t => t.id === templateForm.id)) {
-        setTemplates(prev => prev.map(t => t.id === templateForm.id ? templateForm : t));
+  const refreshTemplates = async () => {
+    const fresh = await getTemplates();
+    setTemplates(fresh);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateForm) return;
+    setIsSaving(true);
+    try {
+      const exists = templates.find(t => t.id === templateForm.id);
+      const payload = { ...templateForm, image_url: templateForm.imageUrl, demo_url: templateForm.demoUrl };
+      if (exists) {
+        await updateTemplate(templateForm.id, payload);
       } else {
-        setTemplates(prev => [...prev, templateForm]);
+        await createTemplate(payload as any);
       }
+      await refreshTemplates();
       resetForms();
       alert("Đã lưu mẫu giao diện!");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa mẫu này?")) {
-      setTemplates(prev => prev.filter(t => t.id !== id));
+      await deleteTemplateDb(id);
+      await refreshTemplates();
     }
   };
 
@@ -276,8 +337,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium transition">
               Hủy bỏ
             </button>
-            <button onClick={handleSaveProject} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg shadow-sky-500/20">
-              <Save className="w-4 h-4 mr-2" /> Lưu & Xuất bản
+            <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 disabled:opacity-70 disabled:cursor-not-allowed rounded-lg text-white font-bold transition shadow-lg shadow-sky-500/20">
+              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Lưu & Xuất bản
             </button>
           </div>
         </div>
@@ -443,7 +504,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h3>
           <div className="flex space-x-3">
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium">Hủy bỏ</button>
-            <button onClick={handleSaveNews} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg"><Save className="w-4 h-4 mr-2" /> Lưu bài viết</button>
+            <button onClick={handleSaveNews} disabled={isSaving} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 disabled:opacity-70 disabled:cursor-not-allowed rounded-lg text-white font-bold transition shadow-lg">
+              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Lưu bài viết
+            </button>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -515,7 +578,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h3>
           <div className="flex space-x-3">
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium">Hủy bỏ</button>
-            <button onClick={handleSaveChannel} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg"><Save className="w-4 h-4 mr-2" /> Lưu tài liệu</button>
+            <button onClick={handleSaveChannel} disabled={isSaving} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 disabled:opacity-70 disabled:cursor-not-allowed rounded-lg text-white font-bold transition shadow-lg">
+              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Lưu tài liệu
+            </button>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -569,7 +634,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h3>
           <div className="flex space-x-3">
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium">Hủy bỏ</button>
-            <button onClick={handleSaveTemplate} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg"><Save className="w-4 h-4 mr-2" /> Lưu mẫu</button>
+            <button onClick={handleSaveTemplate} disabled={isSaving} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 disabled:opacity-70 disabled:cursor-not-allowed rounded-lg text-white font-bold transition shadow-lg">
+              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Lưu mẫu
+            </button>
           </div>
         </div>
         <div className="p-6 space-y-6">
