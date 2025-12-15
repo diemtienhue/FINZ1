@@ -50,8 +50,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const fileExt = file.name.split('.').pop();
       const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       
+      // Upload to Supabase Storage bucket 'finz_assets'
       const { data, error } = await supabase.storage
-        .from('images')
+        .from('finz_assets')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
@@ -64,7 +65,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('images')
+        .from('finz_assets')
         .getPublicUrl(fileName);
 
       return publicUrl;
@@ -75,6 +76,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // --- Handlers for Image Upload ---
+  // Upload tất cả ảnh lên Supabase Storage (không dùng base64)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'PROJECT' | 'NEWS' | 'TEMPLATE') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -85,38 +87,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return;
     }
 
-    // If file is small (< 500KB), use base64, otherwise upload to storage
-    if (file.size < 500 * 1024) {
-      // Use base64 for small images
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        if (type === 'PROJECT' && projectForm) {
-          setProjectForm({ ...projectForm, logo_url: result });
-        } else if (type === 'NEWS' && newsForm) {
-          setNewsForm({ ...newsForm, imageUrl: result });
-        } else if (type === 'TEMPLATE' && templateForm) {
-          setTemplateForm({ ...templateForm, imageUrl: result });
-        }
-      };
-      reader.readAsDataURL(file);
-    } else {
-      // Upload to Supabase Storage for larger images
-      const folder = type === 'PROJECT' ? 'projects' : type === 'NEWS' ? 'news' : 'templates';
-      const imageUrl = await uploadImageToStorage(file, folder);
-      
-      if (imageUrl) {
-        if (type === 'PROJECT' && projectForm) {
-          setProjectForm({ ...projectForm, logo_url: imageUrl });
-        } else if (type === 'NEWS' && newsForm) {
-          setNewsForm({ ...newsForm, imageUrl });
-        } else if (type === 'TEMPLATE' && templateForm) {
-          setTemplateForm({ ...templateForm, imageUrl });
-        }
-        alert('Đã tải ảnh lên thành công!');
-      } else {
-        alert('Lỗi khi tải ảnh lên. Vui lòng thử lại.');
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file ảnh hợp lệ!');
+      return;
+    }
+
+    // Upload tất cả ảnh lên Supabase Storage
+    const folder = type === 'PROJECT' ? 'projects' : type === 'NEWS' ? 'news' : 'templates';
+    const imageUrl = await uploadImageToStorage(file, folder);
+    
+    if (imageUrl) {
+      // Cập nhật form với URL ảnh từ Supabase
+      if (type === 'PROJECT' && projectForm) {
+        setProjectForm({ ...projectForm, logo_url: imageUrl });
+      } else if (type === 'NEWS' && newsForm) {
+        setNewsForm({ ...newsForm, imageUrl });
+      } else if (type === 'TEMPLATE' && templateForm) {
+        setTemplateForm({ ...templateForm, imageUrl });
       }
+      alert('Đã tải ảnh lên Supabase Storage thành công!');
+    } else {
+      alert('Lỗi khi tải ảnh lên. Vui lòng kiểm tra:\n1. Bucket "finz_assets" đã được tạo chưa?\n2. Policies đã được cấu hình chưa?');
     }
   };
 

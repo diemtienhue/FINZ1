@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { INITIAL_PROJECTS, MOCK_NEWS, MOCK_CHANNEL_RESOURCES, MOCK_TEMPLATES } from './constants';
 import { Project, NewsItem, ChannelResource, LandingPageTemplate, TabType } from './types';
 import Layout from './components/Layout';
@@ -11,6 +11,7 @@ import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
 import SupabaseTest from './components/SupabaseTest';
 import { CheckCircle2, TrendingUp, ShieldCheck, Facebook, FileText, Share2, Users, ChevronRight, ExternalLink, ClipboardCheck, Monitor, Palette } from 'lucide-react';
+import { getProjects, getAllProjects, getNews, getChannelResources, getTemplates } from './lib/supabaseHelpers';
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabType | 'ADMIN_LOGIN'>('HOME');
@@ -23,6 +24,107 @@ function App() {
   const [templates, setTemplates] = useState<LandingPageTemplate[]>(MOCK_TEMPLATES);
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load dữ liệu từ Supabase khi ứng dụng khởi động
+  useEffect(() => {
+    const loadDataFromSupabase = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Load tất cả dữ liệu từ Supabase
+        const [projectsData, newsData, channelData, templatesData] = await Promise.all([
+          getProjects().catch(() => {
+            console.warn('Failed to load projects from Supabase, using mock data');
+            return INITIAL_PROJECTS;
+          }),
+          getNews().catch(() => {
+            console.warn('Failed to load news from Supabase, using mock data');
+            return MOCK_NEWS;
+          }),
+          getChannelResources().catch(() => {
+            console.warn('Failed to load channel resources from Supabase, using mock data');
+            return MOCK_CHANNEL_RESOURCES;
+          }),
+          getTemplates().catch(() => {
+            console.warn('Failed to load templates from Supabase, using mock data');
+            return MOCK_TEMPLATES;
+          })
+        ]);
+
+        // Map dữ liệu từ Supabase về format của frontend
+        // Projects: Supabase dùng snake_case, frontend dùng camelCase
+        const mappedProjects: Project[] = projectsData.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          logo_url: p.logo_url,
+          strengths: p.strengths || [],
+          register_link: p.register_link,
+          group_link: p.group_link,
+          contact_phone: p.contact_phone,
+          short_description: p.short_description,
+          popup_content: p.popup_content,
+          priority: p.priority,
+          enabled: p.enabled,
+          commission_policy: p.commission_policy,
+          conditions: p.conditions,
+          tab_1_title: p.tab_1_title,
+          tab_1_content: p.tab_1_content,
+          tab_2_title: p.tab_2_title,
+          tab_2_content: p.tab_2_content,
+          tab_3_title: p.tab_3_title,
+          tab_3_content: p.tab_3_content,
+        }));
+
+        // News: Supabase dùng image_url, frontend dùng imageUrl
+        const mappedNews: NewsItem[] = newsData.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          summary: n.summary,
+          content: n.content || undefined,
+          date: n.date,
+          category: n.category as 'News' | 'Knowledge' | 'Policy',
+          imageUrl: n.image_url, // Map image_url -> imageUrl
+        }));
+
+        // Channel Resources: Format giống nhau
+        const mappedChannelResources: ChannelResource[] = channelData.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          type: c.type,
+          link_url: c.link_url,
+          content: c.content,
+          icon_name: c.icon_name,
+        }));
+
+        // Templates: Supabase dùng image_url và demo_url, frontend dùng imageUrl và demoUrl
+        const mappedTemplates: LandingPageTemplate[] = templatesData.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          imageUrl: t.image_url, // Map image_url -> imageUrl
+          demoUrl: t.demo_url || undefined, // Map demo_url -> demoUrl
+          category: t.category as 'Finance' | 'Insurance' | 'General',
+        }));
+
+        // Cập nhật state với dữ liệu từ Supabase
+        setProjects(mappedProjects);
+        setNews(mappedNews);
+        setChannelResources(mappedChannelResources);
+        setTemplates(mappedTemplates);
+
+        console.log('✅ Đã load dữ liệu từ Supabase thành công!');
+      } catch (error) {
+        console.error('❌ Lỗi khi load dữ liệu từ Supabase:', error);
+        // Giữ nguyên mock data nếu có lỗi
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDataFromSupabase();
+  }, []);
 
   // Triggered when clicking the Admin button in Layout
   const handleAdminClick = () => {
@@ -56,7 +158,90 @@ function App() {
     }
   };
 
+  // Reload dữ liệu từ Supabase (dùng cho Admin sau khi save)
+  const reloadData = async () => {
+    try {
+      const [projectsData, newsData, channelData, templatesData] = await Promise.all([
+        getAllProjects().catch(() => INITIAL_PROJECTS),
+        getNews().catch(() => MOCK_NEWS),
+        getChannelResources().catch(() => MOCK_CHANNEL_RESOURCES),
+        getTemplates().catch(() => MOCK_TEMPLATES)
+      ]);
+
+      // Map dữ liệu như trong useEffect
+      const mappedProjects: Project[] = projectsData.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        logo_url: p.logo_url,
+        strengths: p.strengths || [],
+        register_link: p.register_link,
+        group_link: p.group_link,
+        contact_phone: p.contact_phone,
+        short_description: p.short_description,
+        popup_content: p.popup_content,
+        priority: p.priority,
+        enabled: p.enabled,
+        commission_policy: p.commission_policy,
+        conditions: p.conditions,
+        tab_1_title: p.tab_1_title,
+        tab_1_content: p.tab_1_content,
+        tab_2_title: p.tab_2_title,
+        tab_2_content: p.tab_2_content,
+        tab_3_title: p.tab_3_title,
+        tab_3_content: p.tab_3_content,
+      }));
+
+      const mappedNews: NewsItem[] = newsData.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        summary: n.summary,
+        content: n.content || undefined,
+        date: n.date,
+        category: n.category as 'News' | 'Knowledge' | 'Policy',
+        imageUrl: n.image_url,
+      }));
+
+      const mappedChannelResources: ChannelResource[] = channelData.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        type: c.type,
+        link_url: c.link_url,
+        content: c.content,
+        icon_name: c.icon_name,
+      }));
+
+      const mappedTemplates: LandingPageTemplate[] = templatesData.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        imageUrl: t.image_url,
+        demoUrl: t.demo_url || undefined,
+        category: t.category as 'Finance' | 'Insurance' | 'General',
+      }));
+
+      setProjects(mappedProjects);
+      setNews(mappedNews);
+      setChannelResources(mappedChannelResources);
+      setTemplates(mappedTemplates);
+    } catch (error) {
+      console.error('Error reloading data:', error);
+    }
+  };
+
   const renderContent = () => {
+    // Hiển thị loading khi đang load dữ liệu lần đầu
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-finz-accent mx-auto mb-4"></div>
+            <p className="text-slate-600 dark:text-gray-400">Đang tải dữ liệu từ Supabase...</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'ADMIN_LOGIN':
         return <LoginPage onLoginSuccess={handleLoginSuccess} onBack={() => setActiveTab('HOME')} />;
@@ -75,7 +260,7 @@ function App() {
             setChannelResources={setChannelResources}
             templates={templates}
             setTemplates={setTemplates}
-            onLogout={handleLogout} 
+            onLogout={handleLogout}
           />
         );
       
