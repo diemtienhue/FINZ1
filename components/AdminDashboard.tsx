@@ -1,9 +1,7 @@
 
 import React, { useState } from 'react';
 import { Project, NewsItem, ChannelResource, LandingPageTemplate } from '../types';
-import { Save, LogOut, Edit, Eye, EyeOff, Plus, Trash2, ArrowLeft, Layers, Settings, Database, AlertCircle, Newspaper, PenTool, ExternalLink, Search, Upload, Image as ImageIcon, Layout as LayoutIcon, CheckCircle2, Loader2 } from 'lucide-react';
-import { createProject, updateProject, deleteProject, createNews, updateNews, deleteNews, createChannelResource, updateChannelResource, deleteChannelResource, createTemplate, updateTemplate, deleteTemplate } from '../lib/supabaseHelpers';
-import { supabase } from '../supabaseClient';
+import { Save, LogOut, Edit, Eye, EyeOff, Plus, Trash2, ArrowLeft, Layers, Settings, Database, AlertCircle, Newspaper, PenTool, ExternalLink, Search, Upload, Image as ImageIcon, Layout as LayoutIcon, CheckCircle2 } from 'lucide-react';
 
 interface AdminDashboardProps {
   projects: Project[];
@@ -27,7 +25,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeView, setActiveView] = useState<'PROJECTS' | 'NEWS' | 'CHANNEL' | 'TEMPLATES' | 'SETTINGS'>('PROJECTS');
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   
   // State for different edit forms
   const [projectForm, setProjectForm] = useState<Project | null>(null);
@@ -44,71 +41,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     footerText: 'Công cụ hỗ trợ sales tài chính và xây dựng hệ thống thực chiến.'
   });
 
-  // --- Helper: Upload image to Supabase Storage ---
-  const uploadImageToStorage = async (file: File, folder: string): Promise<string | null> => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
-      // Upload to Supabase Storage bucket 'finz_assets'
-      const { data, error } = await supabase.storage
-        .from('finz_assets')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) {
-        console.error('Error uploading image:', error);
-        return null;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('finz_assets')
-        .getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error in uploadImageToStorage:', error);
-      return null;
-    }
-  };
-
-  // --- Handlers for Image Upload ---
-  // Upload tất cả ảnh lên Supabase Storage (không dùng base64)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'PROJECT' | 'NEWS' | 'TEMPLATE') => {
+  // --- Handlers for Image Upload (Base64) ---
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'PROJECT' | 'NEWS' | 'TEMPLATE') => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Kích thước file quá lớn! Vui lòng chọn file nhỏ hơn 5MB.');
-      return;
-    }
-
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn file ảnh hợp lệ!');
-      return;
-    }
-
-    // Upload tất cả ảnh lên Supabase Storage
-    const folder = type === 'PROJECT' ? 'projects' : type === 'NEWS' ? 'news' : 'templates';
-    const imageUrl = await uploadImageToStorage(file, folder);
-    
-    if (imageUrl) {
-      // Cập nhật form với URL ảnh từ Supabase
-      if (type === 'PROJECT' && projectForm) {
-        setProjectForm({ ...projectForm, logo_url: imageUrl });
-      } else if (type === 'NEWS' && newsForm) {
-        setNewsForm({ ...newsForm, imageUrl });
-      } else if (type === 'TEMPLATE' && templateForm) {
-        setTemplateForm({ ...templateForm, imageUrl });
-      }
-      alert('Đã tải ảnh lên Supabase Storage thành công!');
-    } else {
-      alert('Lỗi khi tải ảnh lên. Vui lòng kiểm tra:\n1. Bucket "finz_assets" đã được tạo chưa?\n2. Policies đã được cấu hình chưa?');
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        if (type === 'PROJECT' && projectForm) {
+          setProjectForm({ ...projectForm, logo_url: result });
+        } else if (type === 'NEWS' && newsForm) {
+          setNewsForm({ ...newsForm, imageUrl: result });
+        } else if (type === 'TEMPLATE' && templateForm) {
+          setTemplateForm({ ...templateForm, imageUrl: result });
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -120,7 +68,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleAddProject = () => {
     setProjectForm({
-      id: '', // Để trống, Supabase sẽ tự generate UUID
+      id: `new-${Date.now()}`,
       name: '',
       logo_url: 'https://via.placeholder.com/100', // Default placeholder
       strengths: ['', '', ''],
@@ -142,112 +90,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  // Helper: Kiểm tra xem string có phải UUID format không
-  const isValidUUID = (str: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  };
-
-  const handleSaveProject = async () => {
-    if (!projectForm) return;
-
-    // Validate required fields
-    if (!projectForm.name || !projectForm.logo_url) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc (Tên dự án, Logo)');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const isExisting = projects.find(p => p.id === projectForm.id);
-      const isUUID = isValidUUID(projectForm.id);
-      
-      // Nếu ID không phải UUID format → Luôn tạo mới (không update)
-      if (isExisting && isUUID) {
-        // Update existing project (chỉ khi ID là UUID hợp lệ)
-        const updated = await updateProject(projectForm.id, {
-          name: projectForm.name,
-          logo_url: projectForm.logo_url,
-          strengths: projectForm.strengths,
-          register_link: projectForm.register_link,
-          group_link: projectForm.group_link,
-          contact_phone: projectForm.contact_phone,
-          short_description: projectForm.short_description,
-          popup_content: projectForm.popup_content,
-          priority: projectForm.priority,
-          enabled: projectForm.enabled,
-          commission_policy: projectForm.commission_policy || null,
-          conditions: projectForm.conditions || null,
-          tab_1_title: projectForm.tab_1_title || null,
-          tab_1_content: projectForm.tab_1_content || null,
-          tab_2_title: projectForm.tab_2_title || null,
-          tab_2_content: projectForm.tab_2_content || null,
-          tab_3_title: projectForm.tab_3_title || null,
-          tab_3_content: projectForm.tab_3_content || null,
-        });
-        
-        setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
-        alert("Đã cập nhật dự án thành công!");
+  const handleSaveProject = () => {
+    if (projectForm) {
+      if (projects.find(p => p.id === projectForm.id)) {
+         setProjects(prev => prev.map(p => p.id === projectForm.id ? projectForm : p));
       } else {
-        // Create new project (không truyền ID để Supabase tự generate UUID)
-        const created = await createProject({
-          // Không truyền id → Supabase sẽ tự generate UUID
-          name: projectForm.name,
-          logo_url: projectForm.logo_url,
-          strengths: projectForm.strengths,
-          register_link: projectForm.register_link,
-          group_link: projectForm.group_link,
-          contact_phone: projectForm.contact_phone,
-          short_description: projectForm.short_description,
-          popup_content: projectForm.popup_content,
-          priority: projectForm.priority,
-          enabled: projectForm.enabled ?? true,
-          commission_policy: projectForm.commission_policy || null,
-          conditions: projectForm.conditions || null,
-          tab_1_title: projectForm.tab_1_title || null,
-          tab_1_content: projectForm.tab_1_content || null,
-          tab_2_title: projectForm.tab_2_title || null,
-          tab_2_content: projectForm.tab_2_content || null,
-          tab_3_title: projectForm.tab_3_title || null,
-          tab_3_content: projectForm.tab_3_content || null,
-        });
-        
-        setProjects(prev => [...prev, created]);
-        alert("Đã tạo dự án mới thành công!");
+         setProjects(prev => [...prev, projectForm]);
       }
-      
       resetForms();
-    } catch (error: any) {
-      console.error('Error saving project:', error);
-      alert(`Lỗi khi lưu dự án: ${error.message || 'Vui lòng thử lại sau'}`);
-    } finally {
-      setIsSaving(false);
+      alert("Đã lưu dự án thành công!");
     }
   };
 
-  const toggleProjectStatus = async (id: string) => {
-    const project = projects.find(p => p.id === id);
-    if (!project) return;
-
-    try {
-      const updated = await updateProject(id, { enabled: !project.enabled });
-      setProjects(prev => prev.map(p => p.id === id ? updated : p));
-    } catch (error: any) {
-      console.error('Error toggling project status:', error);
-      alert(`Lỗi khi cập nhật trạng thái: ${error.message || 'Vui lòng thử lại sau'}`);
-    }
+  const toggleProjectStatus = (id: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
   };
 
-  const handleDeleteProject = async (id: string) => {
-    if(!window.confirm("Bạn có chắc chắn muốn xóa dự án này không?")) return;
-
-    try {
-      await deleteProject(id);
+  const handleDeleteProject = (id: string) => {
+    if(window.confirm("Bạn có chắc chắn muốn xóa dự án này không?")) {
       setProjects(prev => prev.filter(p => p.id !== id));
-      alert("Đã xóa dự án thành công!");
-    } catch (error: any) {
-      console.error('Error deleting project:', error);
-      alert(`Lỗi khi xóa dự án: ${error.message || 'Vui lòng thử lại sau'}`);
     }
   }
 
@@ -281,8 +142,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAddNews = () => {
+    const newId = (news.length + 1).toString();
     setNewsForm({
-      id: '', // Để trống, Supabase sẽ tự generate UUID
+      id: newId,
       title: '',
       summary: '',
       content: '',
@@ -293,64 +155,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveNews = async () => {
-    if (!newsForm) return;
-
-    if (!newsForm.title || !newsForm.summary || !newsForm.imageUrl) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const isExisting = news.find(n => n.id === newsForm.id);
-      const isUUID = isValidUUID(newsForm.id);
-      
-      if (isExisting && isUUID) {
-        // Update existing news (chỉ khi ID là UUID hợp lệ)
-        const updated = await updateNews(newsForm.id, {
-          title: newsForm.title,
-          summary: newsForm.summary,
-          content: newsForm.content || null,
-          date: newsForm.date,
-          category: newsForm.category,
-          image_url: newsForm.imageUrl,
-        });
-        setNews(prev => prev.map(n => n.id === updated.id ? updated : n));
-        alert("Đã cập nhật bài viết!");
+  const handleSaveNews = () => {
+    if (newsForm) {
+      if (news.find(n => n.id === newsForm.id)) {
+        setNews(prev => prev.map(n => n.id === newsForm.id ? newsForm : n));
       } else {
-        // Create new news (không truyền ID để Supabase tự generate UUID)
-        const created = await createNews({
-          title: newsForm.title,
-          summary: newsForm.summary,
-          content: newsForm.content || null,
-          date: newsForm.date,
-          category: newsForm.category,
-          image_url: newsForm.imageUrl,
-        });
-        setNews(prev => [...prev, created]);
-        alert("Đã tạo bài viết mới!");
+        setNews(prev => [...prev, newsForm]);
       }
-      
       resetForms();
-    } catch (error: any) {
-      console.error('Error saving news:', error);
-      alert(`Lỗi khi lưu bài viết: ${error.message || 'Vui lòng thử lại sau'}`);
-    } finally {
-      setIsSaving(false);
+      alert("Đã lưu bài viết!");
     }
   };
 
-  const handleDeleteNews = async (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa tin này?")) return;
-
-    try {
-      await deleteNews(id);
+  const handleDeleteNews = (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa tin này?")) {
       setNews(prev => prev.filter(n => n.id !== id));
-      alert("Đã xóa tin thành công!");
-    } catch (error: any) {
-      console.error('Error deleting news:', error);
-      alert(`Lỗi khi xóa tin: ${error.message || 'Vui lòng thử lại sau'}`);
     }
   };
 
@@ -361,8 +180,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAddChannel = () => {
+    const newId = (channelResources.length + 1).toString();
     setChannelForm({
-      id: '', // Để trống, Supabase sẽ tự generate UUID
+      id: newId,
       title: '',
       description: '',
       type: 'GUIDE',
@@ -371,64 +191,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveChannel = async () => {
-    if (!channelForm) return;
-
-    if (!channelForm.title || !channelForm.description) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const isExisting = channelResources.find(c => c.id === channelForm.id);
-      const isUUID = isValidUUID(channelForm.id);
-      
-      if (isExisting && isUUID) {
-        // Update existing channel resource (chỉ khi ID là UUID hợp lệ)
-        const updated = await updateChannelResource(channelForm.id, {
-          title: channelForm.title,
-          description: channelForm.description,
-          type: channelForm.type,
-          link_url: channelForm.link_url || null,
-          content: channelForm.content || null,
-          icon_name: channelForm.icon_name || null,
-        });
-        setChannelResources(prev => prev.map(c => c.id === updated.id ? updated : c));
-        alert("Đã cập nhật tài liệu!");
+  const handleSaveChannel = () => {
+    if (channelForm) {
+      if (channelResources.find(c => c.id === channelForm.id)) {
+        setChannelResources(prev => prev.map(c => c.id === channelForm.id ? channelForm : c));
       } else {
-        // Create new channel resource (không truyền ID để Supabase tự generate UUID)
-        const created = await createChannelResource({
-          title: channelForm.title,
-          description: channelForm.description,
-          type: channelForm.type,
-          link_url: channelForm.link_url || null,
-          content: channelForm.content || null,
-          icon_name: channelForm.icon_name || null,
-        });
-        setChannelResources(prev => [...prev, created]);
-        alert("Đã tạo tài liệu mới!");
+        setChannelResources(prev => [...prev, channelForm]);
       }
-      
       resetForms();
-    } catch (error: any) {
-      console.error('Error saving channel resource:', error);
-      alert(`Lỗi khi lưu tài liệu: ${error.message || 'Vui lòng thử lại sau'}`);
-    } finally {
-      setIsSaving(false);
+      alert("Đã lưu tài liệu!");
     }
   };
 
-  const handleDeleteChannel = async (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa tài liệu này?")) return;
-
-    try {
-      await deleteChannelResource(id);
+  const handleDeleteChannel = (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa tài liệu này?")) {
       setChannelResources(prev => prev.filter(c => c.id !== id));
-      alert("Đã xóa tài liệu thành công!");
-    } catch (error: any) {
-      console.error('Error deleting channel resource:', error);
-      alert(`Lỗi khi xóa tài liệu: ${error.message || 'Vui lòng thử lại sau'}`);
     }
   };
 
@@ -439,8 +216,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAddTemplate = () => {
+    const newId = (templates.length + 1).toString();
     setTemplateForm({
-      id: '', // Để trống, Supabase sẽ tự generate UUID
+      id: newId,
       title: '',
       description: '',
       category: 'Finance',
@@ -450,62 +228,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
-  const handleSaveTemplate = async () => {
-    if (!templateForm) return;
-
-    if (!templateForm.title || !templateForm.description || !templateForm.imageUrl) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const isExisting = templates.find(t => t.id === templateForm.id);
-      const isUUID = isValidUUID(templateForm.id);
-      
-      if (isExisting && isUUID) {
-        // Update existing template (chỉ khi ID là UUID hợp lệ)
-        const updated = await updateTemplate(templateForm.id, {
-          title: templateForm.title,
-          description: templateForm.description,
-          image_url: templateForm.imageUrl,
-          demo_url: templateForm.demoUrl || null,
-          category: templateForm.category,
-        });
-        setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t));
-        alert("Đã cập nhật mẫu giao diện!");
+  const handleSaveTemplate = () => {
+    if (templateForm) {
+      if (templates.find(t => t.id === templateForm.id)) {
+        setTemplates(prev => prev.map(t => t.id === templateForm.id ? templateForm : t));
       } else {
-        // Create new template (không truyền ID để Supabase tự generate UUID)
-        const created = await createTemplate({
-          title: templateForm.title,
-          description: templateForm.description,
-          image_url: templateForm.imageUrl,
-          demo_url: templateForm.demoUrl || null,
-          category: templateForm.category,
-        });
-        setTemplates(prev => [...prev, created]);
-        alert("Đã tạo mẫu giao diện mới!");
+        setTemplates(prev => [...prev, templateForm]);
       }
-      
       resetForms();
-    } catch (error: any) {
-      console.error('Error saving template:', error);
-      alert(`Lỗi khi lưu mẫu giao diện: ${error.message || 'Vui lòng thử lại sau'}`);
-    } finally {
-      setIsSaving(false);
+      alert("Đã lưu mẫu giao diện!");
     }
   };
 
-  const handleDeleteTemplate = async (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa mẫu này?")) return;
-
-    try {
-      await deleteTemplate(id);
+  const handleDeleteTemplate = (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa mẫu này?")) {
       setTemplates(prev => prev.filter(t => t.id !== id));
-      alert("Đã xóa mẫu thành công!");
-    } catch (error: any) {
-      console.error('Error deleting template:', error);
-      alert(`Lỗi khi xóa mẫu: ${error.message || 'Vui lòng thử lại sau'}`);
     }
   };
 
@@ -539,20 +276,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium transition">
               Hủy bỏ
             </button>
-            <button 
-              onClick={handleSaveProject} 
-              disabled={isSaving}
-              className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg shadow-sky-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang lưu...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" /> Lưu & Xuất bản
-                </>
-              )}
+            <button onClick={handleSaveProject} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg shadow-sky-500/20">
+              <Save className="w-4 h-4 mr-2" /> Lưu & Xuất bản
             </button>
           </div>
         </div>
@@ -718,21 +443,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h3>
           <div className="flex space-x-3">
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium">Hủy bỏ</button>
-            <button 
-              onClick={handleSaveNews} 
-              disabled={isSaving}
-              className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang lưu...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" /> Lưu bài viết
-                </>
-              )}
-            </button>
+            <button onClick={handleSaveNews} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg"><Save className="w-4 h-4 mr-2" /> Lưu bài viết</button>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -804,21 +515,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h3>
           <div className="flex space-x-3">
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium">Hủy bỏ</button>
-            <button 
-              onClick={handleSaveChannel} 
-              disabled={isSaving}
-              className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang lưu...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" /> Lưu tài liệu
-                </>
-              )}
-            </button>
+            <button onClick={handleSaveChannel} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg"><Save className="w-4 h-4 mr-2" /> Lưu tài liệu</button>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -872,21 +569,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h3>
           <div className="flex space-x-3">
             <button onClick={resetForms} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-slate-700 dark:text-white font-medium">Hủy bỏ</button>
-            <button 
-              onClick={handleSaveTemplate} 
-              disabled={isSaving}
-              className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang lưu...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" /> Lưu mẫu
-                </>
-              )}
-            </button>
+            <button onClick={handleSaveTemplate} className="flex items-center px-6 py-2 bg-finz-accent hover:bg-sky-600 rounded-lg text-white font-bold transition shadow-lg"><Save className="w-4 h-4 mr-2" /> Lưu mẫu</button>
           </div>
         </div>
         <div className="p-6 space-y-6">

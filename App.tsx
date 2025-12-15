@@ -418,8 +418,8 @@ function App() {
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-finz-accent/10 dark:to-purple-500/10 border border-blue-100 dark:border-finz-accent/20 rounded-3xl p-6 md:p-10 relative overflow-hidden shadow-sm dark:shadow-none transition-colors">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-200 dark:bg-finz-accent/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-50 dark:opacity-100"></div>
                 <div className="relative z-10">
-                  <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-900 via-blue-700 to-amber-500 filter drop-shadow-sm">
+                  <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
+                    <span className="text-slate-900 dark:text-white drop-shadow-sm">
                       FINZ – ĐIỂM CHẠM TỐI ƯU
                     </span>
                   </h1>
@@ -453,44 +453,34 @@ function App() {
                   </div>
 
                   {/* Modern Action Buttons - Uniform Style */}
-                  <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center md:justify-start">
+                  <div className="flex flex-row flex-nowrap gap-3 justify-center md:justify-start overflow-x-auto py-2">
                     <button 
                        onClick={() => setActiveTab('CALCULATOR')}
-                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                       className="group relative flex items-center justify-center px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-sky-400 to-blue-600 hover:from-sky-300 hover:to-blue-500 text-white rounded-xl sm:rounded-2xl font-semibold sm:font-bold transition-all duration-300 shadow-lg shadow-sky-300/40 hover:shadow-amber-200/60 hover:-translate-y-1 border border-amber-100/70 whitespace-nowrap"
                     >
                       <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
                       <ShieldCheck className="w-5 h-5 mr-2" />
                       Máy tính Tín chấp
                     </button>
                     
-                    <button 
-                       onClick={() => setActiveTab('DTI')}
-                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
-                    >
-                       <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
-                       <TrendingUp className="w-5 h-5 mr-2" />
-                      Check DTI
-                    </button>
-                    
                     <a 
                        href="https://zalo.me/g/axlofr797"
                        target="_blank"
                        rel="noreferrer"
-                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                       className="group relative flex items-center justify-center px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-sky-400 to-blue-600 hover:from-sky-300 hover:to-blue-500 text-white rounded-xl sm:rounded-2xl font-semibold sm:font-bold transition-all duration-300 shadow-lg shadow-sky-300/40 hover:shadow-amber-200/60 hover:-translate-y-1 border border-amber-100/70 whitespace-nowrap"
                     >
                       <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
                       <ClipboardCheck className="w-5 h-5 mr-2" /> 
                       Kiểm tra CIC
                     </a>
-
-                    {/* Test Supabase Button - Tạm thời để test */}
+                    
                     <button 
-                       onClick={() => setActiveTab('SUPABASE_TEST')}
-                       className="group relative flex items-center justify-center px-6 py-4 bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-500 hover:to-emerald-600 text-white rounded-2xl font-bold transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
+                       onClick={() => setActiveTab('DTI')}
+                       className="group relative flex items-center justify-center px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-sky-400 to-blue-600 hover:from-sky-300 hover:to-blue-500 text-white rounded-xl sm:rounded-2xl font-semibold sm:font-bold transition-all duration-300 shadow-lg shadow-sky-300/40 hover:shadow-amber-200/60 hover:-translate-y-1 border border-amber-100/70 whitespace-nowrap"
                     >
-                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
-                      <CheckCircle2 className="w-5 h-5 mr-2" /> 
-                      Test Supabase
+                       <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></span>
+                       <TrendingUp className="w-5 h-5 mr-2" />
+                      Chick DTI
                     </button>
                   </div>
                 </div>
