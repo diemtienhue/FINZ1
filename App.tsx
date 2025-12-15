@@ -27,97 +27,108 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Load dữ liệu từ Supabase khi ứng dụng khởi động
+  // GIỮ NGUYÊN dữ liệu mock, chỉ load từ Supabase nếu có dữ liệu
   useEffect(() => {
     const loadDataFromSupabase = async () => {
       try {
         setIsLoading(true);
         
         // Load tất cả dữ liệu từ Supabase
-        const [projectsData, newsData, channelData, templatesData] = await Promise.all([
-          getProjects().catch(() => {
-            console.warn('Failed to load projects from Supabase, using mock data');
-            return INITIAL_PROJECTS;
-          }),
-          getNews().catch(() => {
-            console.warn('Failed to load news from Supabase, using mock data');
-            return MOCK_NEWS;
-          }),
-          getChannelResources().catch(() => {
-            console.warn('Failed to load channel resources from Supabase, using mock data');
-            return MOCK_CHANNEL_RESOURCES;
-          }),
-          getTemplates().catch(() => {
-            console.warn('Failed to load templates from Supabase, using mock data');
-            return MOCK_TEMPLATES;
-          })
+        const [projectsResult, newsResult, channelResult, templatesResult] = await Promise.allSettled([
+          getProjects(),
+          getNews(),
+          getChannelResources(),
+          getTemplates()
         ]);
 
-        // Map dữ liệu từ Supabase về format của frontend
-        // Projects: Supabase dùng snake_case, frontend dùng camelCase
-        const mappedProjects: Project[] = projectsData.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          logo_url: p.logo_url,
-          strengths: p.strengths || [],
-          register_link: p.register_link,
-          group_link: p.group_link,
-          contact_phone: p.contact_phone,
-          short_description: p.short_description,
-          popup_content: p.popup_content,
-          priority: p.priority,
-          enabled: p.enabled,
-          commission_policy: p.commission_policy,
-          conditions: p.conditions,
-          tab_1_title: p.tab_1_title,
-          tab_1_content: p.tab_1_content,
-          tab_2_title: p.tab_2_title,
-          tab_2_content: p.tab_2_content,
-          tab_3_title: p.tab_3_title,
-          tab_3_content: p.tab_3_content,
-        }));
+        // Xử lý Projects: Nếu Supabase có dữ liệu thì dùng, không thì giữ nguyên mock
+        if (projectsResult.status === 'fulfilled' && projectsResult.value && projectsResult.value.length > 0) {
+          const mappedProjects: Project[] = projectsResult.value.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            logo_url: p.logo_url,
+            strengths: p.strengths || [],
+            register_link: p.register_link,
+            group_link: p.group_link,
+            contact_phone: p.contact_phone,
+            short_description: p.short_description,
+            popup_content: p.popup_content,
+            priority: p.priority,
+            enabled: p.enabled,
+            commission_policy: p.commission_policy,
+            conditions: p.conditions,
+            tab_1_title: p.tab_1_title,
+            tab_1_content: p.tab_1_content,
+            tab_2_title: p.tab_2_title,
+            tab_2_content: p.tab_2_content,
+            tab_3_title: p.tab_3_title,
+            tab_3_content: p.tab_3_content,
+          }));
+          setProjects(mappedProjects);
+          console.log('✅ Đã load projects từ Supabase:', mappedProjects.length, 'items');
+        } else {
+          console.log('ℹ️ Supabase không có projects, giữ nguyên dữ liệu mock:', INITIAL_PROJECTS.length, 'items');
+          // Giữ nguyên INITIAL_PROJECTS - không thay đổi
+        }
 
-        // News: Supabase dùng image_url, frontend dùng imageUrl
-        const mappedNews: NewsItem[] = newsData.map((n: any) => ({
-          id: n.id,
-          title: n.title,
-          summary: n.summary,
-          content: n.content || undefined,
-          date: n.date,
-          category: n.category as 'News' | 'Knowledge' | 'Policy',
-          imageUrl: n.image_url, // Map image_url -> imageUrl
-        }));
+        // Xử lý News: Nếu Supabase có dữ liệu thì dùng, không thì giữ nguyên mock
+        if (newsResult.status === 'fulfilled' && newsResult.value && newsResult.value.length > 0) {
+          const mappedNews: NewsItem[] = newsResult.value.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            summary: n.summary,
+            content: n.content || undefined,
+            date: n.date,
+            category: n.category as 'News' | 'Knowledge' | 'Policy',
+            imageUrl: n.image_url, // Map image_url -> imageUrl
+          }));
+          setNews(mappedNews);
+          console.log('✅ Đã load news từ Supabase:', mappedNews.length, 'items');
+        } else {
+          console.log('ℹ️ Supabase không có news, giữ nguyên dữ liệu mock:', MOCK_NEWS.length, 'items');
+          // Giữ nguyên MOCK_NEWS - không thay đổi
+        }
 
-        // Channel Resources: Format giống nhau
-        const mappedChannelResources: ChannelResource[] = channelData.map((c: any) => ({
-          id: c.id,
-          title: c.title,
-          description: c.description,
-          type: c.type,
-          link_url: c.link_url,
-          content: c.content,
-          icon_name: c.icon_name,
-        }));
+        // Xử lý Channel Resources: Nếu Supabase có dữ liệu thì dùng, không thì giữ nguyên mock
+        if (channelResult.status === 'fulfilled' && channelResult.value && channelResult.value.length > 0) {
+          const mappedChannelResources: ChannelResource[] = channelResult.value.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            type: c.type,
+            link_url: c.link_url,
+            content: c.content,
+            icon_name: c.icon_name,
+          }));
+          setChannelResources(mappedChannelResources);
+          console.log('✅ Đã load channel resources từ Supabase:', mappedChannelResources.length, 'items');
+        } else {
+          console.log('ℹ️ Supabase không có channel resources, giữ nguyên dữ liệu mock:', MOCK_CHANNEL_RESOURCES.length, 'items');
+          // Giữ nguyên MOCK_CHANNEL_RESOURCES - không thay đổi
+        }
 
-        // Templates: Supabase dùng image_url và demo_url, frontend dùng imageUrl và demoUrl
-        const mappedTemplates: LandingPageTemplate[] = templatesData.map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description,
-          imageUrl: t.image_url, // Map image_url -> imageUrl
-          demoUrl: t.demo_url || undefined, // Map demo_url -> demoUrl
-          category: t.category as 'Finance' | 'Insurance' | 'General',
-        }));
+        // Xử lý Templates: Nếu Supabase có dữ liệu thì dùng, không thì giữ nguyên mock
+        if (templatesResult.status === 'fulfilled' && templatesResult.value && templatesResult.value.length > 0) {
+          const mappedTemplates: LandingPageTemplate[] = templatesResult.value.map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            description: t.description,
+            imageUrl: t.image_url, // Map image_url -> imageUrl
+            demoUrl: t.demo_url || undefined, // Map demo_url -> demoUrl
+            category: t.category as 'Finance' | 'Insurance' | 'General',
+          }));
+          setTemplates(mappedTemplates);
+          console.log('✅ Đã load templates từ Supabase:', mappedTemplates.length, 'items');
+        } else {
+          console.log('ℹ️ Supabase không có templates, giữ nguyên dữ liệu mock:', MOCK_TEMPLATES.length, 'items');
+          // Giữ nguyên MOCK_TEMPLATES - không thay đổi
+        }
 
-        // Cập nhật state với dữ liệu từ Supabase
-        setProjects(mappedProjects);
-        setNews(mappedNews);
-        setChannelResources(mappedChannelResources);
-        setTemplates(mappedTemplates);
-
-        console.log('✅ Đã load dữ liệu từ Supabase thành công!');
+        console.log('✅ Hoàn tất load dữ liệu từ Supabase!');
       } catch (error) {
         console.error('❌ Lỗi khi load dữ liệu từ Supabase:', error);
-        // Giữ nguyên mock data nếu có lỗi
+        // Giữ nguyên mock data nếu có lỗi - không thay đổi gì
+        console.log('ℹ️ Giữ nguyên tất cả dữ liệu mock do lỗi');
       } finally {
         setIsLoading(false);
       }
@@ -159,71 +170,79 @@ function App() {
   };
 
   // Reload dữ liệu từ Supabase (dùng cho Admin sau khi save)
+  // Chỉ reload nếu Supabase có dữ liệu, không thay thế mock data
   const reloadData = async () => {
     try {
-      const [projectsData, newsData, channelData, templatesData] = await Promise.all([
-        getAllProjects().catch(() => INITIAL_PROJECTS),
-        getNews().catch(() => MOCK_NEWS),
-        getChannelResources().catch(() => MOCK_CHANNEL_RESOURCES),
-        getTemplates().catch(() => MOCK_TEMPLATES)
+      const [projectsResult, newsResult, channelResult, templatesResult] = await Promise.allSettled([
+        getAllProjects(), // Dùng getAllProjects để lấy cả disabled
+        getNews(),
+        getChannelResources(),
+        getTemplates()
       ]);
 
-      // Map dữ liệu như trong useEffect
-      const mappedProjects: Project[] = projectsData.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        logo_url: p.logo_url,
-        strengths: p.strengths || [],
-        register_link: p.register_link,
-        group_link: p.group_link,
-        contact_phone: p.contact_phone,
-        short_description: p.short_description,
-        popup_content: p.popup_content,
-        priority: p.priority,
-        enabled: p.enabled,
-        commission_policy: p.commission_policy,
-        conditions: p.conditions,
-        tab_1_title: p.tab_1_title,
-        tab_1_content: p.tab_1_content,
-        tab_2_title: p.tab_2_title,
-        tab_2_content: p.tab_2_content,
-        tab_3_title: p.tab_3_title,
-        tab_3_content: p.tab_3_content,
-      }));
+      // Chỉ cập nhật nếu Supabase có dữ liệu
+      if (projectsResult.status === 'fulfilled' && projectsResult.value && projectsResult.value.length > 0) {
+        const mappedProjects: Project[] = projectsResult.value.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          logo_url: p.logo_url,
+          strengths: p.strengths || [],
+          register_link: p.register_link,
+          group_link: p.group_link,
+          contact_phone: p.contact_phone,
+          short_description: p.short_description,
+          popup_content: p.popup_content,
+          priority: p.priority,
+          enabled: p.enabled,
+          commission_policy: p.commission_policy,
+          conditions: p.conditions,
+          tab_1_title: p.tab_1_title,
+          tab_1_content: p.tab_1_content,
+          tab_2_title: p.tab_2_title,
+          tab_2_content: p.tab_2_content,
+          tab_3_title: p.tab_3_title,
+          tab_3_content: p.tab_3_content,
+        }));
+        setProjects(mappedProjects);
+      }
 
-      const mappedNews: NewsItem[] = newsData.map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        summary: n.summary,
-        content: n.content || undefined,
-        date: n.date,
-        category: n.category as 'News' | 'Knowledge' | 'Policy',
-        imageUrl: n.image_url,
-      }));
+      if (newsResult.status === 'fulfilled' && newsResult.value && newsResult.value.length > 0) {
+        const mappedNews: NewsItem[] = newsResult.value.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          summary: n.summary,
+          content: n.content || undefined,
+          date: n.date,
+          category: n.category as 'News' | 'Knowledge' | 'Policy',
+          imageUrl: n.image_url,
+        }));
+        setNews(mappedNews);
+      }
 
-      const mappedChannelResources: ChannelResource[] = channelData.map((c: any) => ({
-        id: c.id,
-        title: c.title,
-        description: c.description,
-        type: c.type,
-        link_url: c.link_url,
-        content: c.content,
-        icon_name: c.icon_name,
-      }));
+      if (channelResult.status === 'fulfilled' && channelResult.value && channelResult.value.length > 0) {
+        const mappedChannelResources: ChannelResource[] = channelResult.value.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          type: c.type,
+          link_url: c.link_url,
+          content: c.content,
+          icon_name: c.icon_name,
+        }));
+        setChannelResources(mappedChannelResources);
+      }
 
-      const mappedTemplates: LandingPageTemplate[] = templatesData.map((t: any) => ({
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        imageUrl: t.image_url,
-        demoUrl: t.demo_url || undefined,
-        category: t.category as 'Finance' | 'Insurance' | 'General',
-      }));
-
-      setProjects(mappedProjects);
-      setNews(mappedNews);
-      setChannelResources(mappedChannelResources);
-      setTemplates(mappedTemplates);
+      if (templatesResult.status === 'fulfilled' && templatesResult.value && templatesResult.value.length > 0) {
+        const mappedTemplates: LandingPageTemplate[] = templatesResult.value.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          imageUrl: t.image_url,
+          demoUrl: t.demo_url || undefined,
+          category: t.category as 'Finance' | 'Insurance' | 'General',
+        }));
+        setTemplates(mappedTemplates);
+      }
     } catch (error) {
       console.error('Error reloading data:', error);
     }
