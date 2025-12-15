@@ -120,7 +120,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleAddProject = () => {
     setProjectForm({
-      id: `new-${Date.now()}`,
+      id: '', // Để trống, Supabase sẽ tự generate UUID
       name: '',
       logo_url: 'https://via.placeholder.com/100', // Default placeholder
       strengths: ['', '', ''],
@@ -142,6 +142,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
   };
 
+  // Helper: Kiểm tra xem string có phải UUID format không
+  const isValidUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
   const handleSaveProject = async () => {
     if (!projectForm) return;
 
@@ -154,9 +160,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsSaving(true);
     try {
       const isExisting = projects.find(p => p.id === projectForm.id);
+      const isUUID = isValidUUID(projectForm.id);
       
-      if (isExisting) {
-        // Update existing project
+      // Nếu ID không phải UUID format → Luôn tạo mới (không update)
+      if (isExisting && isUUID) {
+        // Update existing project (chỉ khi ID là UUID hợp lệ)
         const updated = await updateProject(projectForm.id, {
           name: projectForm.name,
           logo_url: projectForm.logo_url,
@@ -181,9 +189,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
         alert("Đã cập nhật dự án thành công!");
       } else {
-        // Create new project
+        // Create new project (không truyền ID để Supabase tự generate UUID)
         const created = await createProject({
-          id: projectForm.id,
+          // Không truyền id → Supabase sẽ tự generate UUID
           name: projectForm.name,
           logo_url: projectForm.logo_url,
           strengths: projectForm.strengths,
@@ -273,9 +281,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAddNews = () => {
-    const newId = (news.length + 1).toString();
     setNewsForm({
-      id: newId,
+      id: '', // Để trống, Supabase sẽ tự generate UUID
       title: '',
       summary: '',
       content: '',
@@ -297,8 +304,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsSaving(true);
     try {
       const isExisting = news.find(n => n.id === newsForm.id);
+      const isUUID = isValidUUID(newsForm.id);
       
-      if (isExisting) {
+      if (isExisting && isUUID) {
+        // Update existing news (chỉ khi ID là UUID hợp lệ)
         const updated = await updateNews(newsForm.id, {
           title: newsForm.title,
           summary: newsForm.summary,
@@ -310,8 +319,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setNews(prev => prev.map(n => n.id === updated.id ? updated : n));
         alert("Đã cập nhật bài viết!");
       } else {
+        // Create new news (không truyền ID để Supabase tự generate UUID)
         const created = await createNews({
-          id: newsForm.id,
           title: newsForm.title,
           summary: newsForm.summary,
           content: newsForm.content || null,
@@ -352,9 +361,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAddChannel = () => {
-    const newId = (channelResources.length + 1).toString();
     setChannelForm({
-      id: newId,
+      id: '', // Để trống, Supabase sẽ tự generate UUID
       title: '',
       description: '',
       type: 'GUIDE',
@@ -374,8 +382,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsSaving(true);
     try {
       const isExisting = channelResources.find(c => c.id === channelForm.id);
+      const isUUID = isValidUUID(channelForm.id);
       
-      if (isExisting) {
+      if (isExisting && isUUID) {
+        // Update existing channel resource (chỉ khi ID là UUID hợp lệ)
         const updated = await updateChannelResource(channelForm.id, {
           title: channelForm.title,
           description: channelForm.description,
@@ -387,8 +397,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setChannelResources(prev => prev.map(c => c.id === updated.id ? updated : c));
         alert("Đã cập nhật tài liệu!");
       } else {
+        // Create new channel resource (không truyền ID để Supabase tự generate UUID)
         const created = await createChannelResource({
-          id: channelForm.id,
           title: channelForm.title,
           description: channelForm.description,
           type: channelForm.type,
@@ -429,9 +439,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleAddTemplate = () => {
-    const newId = (templates.length + 1).toString();
     setTemplateForm({
-      id: newId,
+      id: '', // Để trống, Supabase sẽ tự generate UUID
       title: '',
       description: '',
       category: 'Finance',
@@ -452,8 +461,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsSaving(true);
     try {
       const isExisting = templates.find(t => t.id === templateForm.id);
+      const isUUID = isValidUUID(templateForm.id);
       
-      if (isExisting) {
+      if (isExisting && isUUID) {
+        // Update existing template (chỉ khi ID là UUID hợp lệ)
         const updated = await updateTemplate(templateForm.id, {
           title: templateForm.title,
           description: templateForm.description,
@@ -464,8 +475,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t));
         alert("Đã cập nhật mẫu giao diện!");
       } else {
+        // Create new template (không truyền ID để Supabase tự generate UUID)
         const created = await createTemplate({
-          id: templateForm.id,
           title: templateForm.title,
           description: templateForm.description,
           image_url: templateForm.imageUrl,
