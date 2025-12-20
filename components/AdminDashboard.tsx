@@ -107,7 +107,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } catch (error: any) {
       console.error('Error uploading image:', error);
       const errorMessage = error?.message || 'Lỗi không xác định';
-      alert(`❌ ${errorMessage}\n\nVui lòng kiểm tra:\n1. Bucket "images" đã được tạo trong Supabase Storage\n2. RLS policies cho phép upload\n3. Biến môi trường VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY đã được cấu hình`);
+      alert(`❌ ${errorMessage}\n\nVui lòng kiểm tra:\n1. Bucket "finz_assets" đã được tạo trong Supabase Storage\n2. RLS policies cho phép upload\n3. Biến môi trường VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY đã được cấu hình`);
     }
   };
 

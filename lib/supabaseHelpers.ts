@@ -50,7 +50,7 @@ export async function uploadImageToStorage(file: File, folder: string = 'images'
     
     // Upload file lên Storage
     const { data, error } = await supabase.storage
-      .from('images')
+      .from('finz_assets')
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false
@@ -61,9 +61,9 @@ export async function uploadImageToStorage(file: File, folder: string = 'images'
       
       // Xử lý các lỗi phổ biến
       if (error.message?.includes('Bucket not found') || error.message?.includes('The resource was not found')) {
-        throw new Error('Bucket "images" chưa được tạo trong Supabase Storage. Vui lòng tạo bucket "images" trong Supabase Dashboard > Storage.');
+        throw new Error('Bucket "finz_assets" chưa được tạo trong Supabase Storage. Vui lòng tạo bucket "finz_assets" trong Supabase Dashboard > Storage.');
       } else if (error.message?.includes('new row violates row-level security policy') || error.message?.includes('RLS')) {
-        throw new Error('Chưa có quyền upload. Vui lòng kiểm tra RLS policies trong Supabase Storage > images bucket.');
+        throw new Error('Chưa có quyền upload. Vui lòng kiểm tra RLS policies trong Supabase Storage > finz_assets bucket.');
       } else if (error.message?.includes('duplicate')) {
         throw new Error('File đã tồn tại. Vui lòng thử lại.');
       } else {
@@ -77,7 +77,7 @@ export async function uploadImageToStorage(file: File, folder: string = 'images'
 
     // Lấy URL công khai
     const { data: { publicUrl } } = supabase.storage
-      .from('images')
+      .from('finz_assets')
       .getPublicUrl(data.path);
 
     if (!publicUrl) {
@@ -103,8 +103,8 @@ export async function uploadImageToStorage(file: File, folder: string = 'images'
 export async function deleteImageFromStorage(imageUrl: string): Promise<void> {
   try {
     // Extract file path từ URL
-    // URL format: https://[project-id].supabase.co/storage/v1/object/public/images/...
-    const urlParts = imageUrl.split('/storage/v1/object/public/images/');
+    // URL format: https://[project-id].supabase.co/storage/v1/object/public/finz_assets/...
+    const urlParts = imageUrl.split('/storage/v1/object/public/finz_assets/');
     if (urlParts.length !== 2) {
       console.warn('Invalid image URL format:', imageUrl);
       return;
@@ -112,7 +112,7 @@ export async function deleteImageFromStorage(imageUrl: string): Promise<void> {
 
     const filePath = urlParts[1];
     const { error } = await supabase.storage
-      .from('images')
+      .from('finz_assets')
       .remove([filePath]);
 
     if (error) {
