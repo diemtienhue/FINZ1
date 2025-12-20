@@ -23,6 +23,74 @@ type Template = Database['public']['Tables']['landing_page_templates']['Row'];
 type TemplateInsert = Database['public']['Tables']['landing_page_templates']['Insert'];
 type TemplateUpdate = Database['public']['Tables']['landing_page_templates']['Update'];
 
+// ==================== STORAGE HELPERS ====================
+
+/**
+ * Upload ảnh lên Supabase Storage
+ * @param file File ảnh cần upload
+ * @param folder Thư mục lưu trữ (ví dụ: 'templates', 'projects', 'news')
+ * @returns URL công khai của ảnh đã upload
+ */
+export async function uploadImageToStorage(file: File, folder: string = 'images'): Promise<string> {
+  try {
+    // Tạo tên file unique
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    // Upload file lên Storage
+    const { data, error } = await supabase.storage
+      .from('images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+
+    // Lấy URL công khai
+    const { data: { publicUrl } } = supabase.storage
+      .from('images')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  } catch (error) {
+    console.error('Failed to upload image to Storage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa ảnh khỏi Supabase Storage
+ * @param imageUrl URL của ảnh cần xóa
+ */
+export async function deleteImageFromStorage(imageUrl: string): Promise<void> {
+  try {
+    // Extract file path từ URL
+    // URL format: https://[project-id].supabase.co/storage/v1/object/public/images/...
+    const urlParts = imageUrl.split('/storage/v1/object/public/images/');
+    if (urlParts.length !== 2) {
+      console.warn('Invalid image URL format:', imageUrl);
+      return;
+    }
+
+    const filePath = urlParts[1];
+    const { error } = await supabase.storage
+      .from('images')
+      .remove([filePath]);
+
+    if (error) {
+      console.error('Error deleting image:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('Failed to delete image from Storage:', error);
+    // Không throw error để không làm gián đoạn flow chính
+  }
+}
+
 // ==================== PROJECTS ====================
 
 /**

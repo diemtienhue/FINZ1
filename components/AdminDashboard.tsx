@@ -7,7 +7,8 @@ import {
   createProject, updateProject, deleteProject as deleteProjectDb, toggleProjectStatus as toggleProjectStatusDb,
   createNews, updateNews, deleteNews as deleteNewsDb,
   createChannelResource, updateChannelResource, deleteChannelResource as deleteChannelDb,
-  createTemplate, updateTemplate, deleteTemplate as deleteTemplateDb
+  createTemplate, updateTemplate, deleteTemplate as deleteTemplateDb,
+  uploadImageToStorage
 } from '../lib/supabaseHelpers';
 
 interface AdminDashboardProps {
@@ -49,22 +50,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     footerText: 'Công cụ hỗ trợ sales tài chính và xây dựng hệ thống thực chiến.'
   });
 
-  // --- Handlers for Image Upload (Base64) ---
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'PROJECT' | 'NEWS' | 'TEMPLATE') => {
+  // --- Handlers for Image Upload ---
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'PROJECT' | 'NEWS' | 'TEMPLATE') => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        if (type === 'PROJECT' && projectForm) {
-          setProjectForm({ ...projectForm, logo_url: result });
-        } else if (type === 'NEWS' && newsForm) {
-          setNewsForm({ ...newsForm, imageUrl: result });
-        } else if (type === 'TEMPLATE' && templateForm) {
-          setTemplateForm({ ...templateForm, imageUrl: result });
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      // Xác định folder dựa trên type
+      let folder = 'images';
+      if (type === 'PROJECT') folder = 'projects';
+      else if (type === 'NEWS') folder = 'news';
+      else if (type === 'TEMPLATE') folder = 'templates';
+
+      // Upload lên Supabase Storage
+      const imageUrl = await uploadImageToStorage(file, folder);
+      
+      // Cập nhật form với URL từ Storage
+      if (type === 'PROJECT' && projectForm) {
+        setProjectForm({ ...projectForm, logo_url: imageUrl });
+      } else if (type === 'NEWS' && newsForm) {
+        setNewsForm({ ...newsForm, imageUrl });
+      } else if (type === 'TEMPLATE' && templateForm) {
+        setTemplateForm({ ...templateForm, imageUrl });
+      }
+      
+      alert('✅ Đã tải ảnh lên thành công!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('❌ Lỗi khi tải ảnh lên. Vui lòng thử lại.');
     }
   };
 
@@ -278,7 +291,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const refreshTemplates = async () => {
     const fresh = await getTemplates();
-    setTemplates(fresh);
+    // Map từ database format (snake_case) sang frontend format (camelCase)
+    const mappedTemplates: LandingPageTemplate[] = fresh.map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      imageUrl: t.image_url, // Map image_url -> imageUrl
+      demoUrl: t.demo_url || undefined, // Map demo_url -> demoUrl
+      category: t.category as 'Finance' | 'Insurance' | 'General',
+    }));
+    setTemplates(mappedTemplates);
   };
 
   const handleSaveTemplate = async () => {
@@ -286,15 +308,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsSaving(true);
     try {
       const exists = templates.find(t => t.id === templateForm.id);
-      const payload = { ...templateForm, image_url: templateForm.imageUrl, demo_url: templateForm.demoUrl };
+      
+      // Tạo payload đúng format cho database (snake_case)
+      const payload: any = {
+        title: templateForm.title,
+        description: templateForm.description,
+        category: templateForm.category,
+        image_url: templateForm.imageUrl, // Map từ camelCase sang snake_case
+        demo_url: templateForm.demoUrl || null,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Nếu là tạo mới, thêm id
+      if (!exists) {
+        payload.id = templateForm.id;
+      }
+      
       if (exists) {
         await updateTemplate(templateForm.id, payload);
       } else {
-        await createTemplate(payload as any);
+        await createTemplate(payload);
       }
       await refreshTemplates();
       resetForms();
       alert("Đã lưu mẫu giao diện!");
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert("❌ Lỗi khi lưu mẫu giao diện. Vui lòng thử lại.");
     } finally {
       setIsSaving(false);
     }
