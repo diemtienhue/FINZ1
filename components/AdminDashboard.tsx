@@ -55,6 +55,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('❌ File phải là ảnh (jpg, png, gif, webp, ...)');
+      return;
+    }
+
     try {
       // Xác định folder dựa trên type
       let folder = 'images';
@@ -62,10 +68,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       else if (type === 'NEWS') folder = 'news';
       else if (type === 'TEMPLATE') folder = 'templates';
 
-      // Upload lên Supabase Storage
-      const imageUrl = await uploadImageToStorage(file, folder);
+      // Thử upload lên Supabase Storage
+      let imageUrl: string;
       
-      // Cập nhật form với URL từ Storage
+      try {
+        imageUrl = await uploadImageToStorage(file, folder);
+      } catch (storageError: any) {
+        // Nếu upload Storage thất bại, fallback về Base64 cho file nhỏ (< 500KB)
+        if (file.size < 500 * 1024) {
+          console.warn('Storage upload failed, using Base64 fallback:', storageError);
+          const reader = new FileReader();
+          imageUrl = await new Promise((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          alert('⚠️ Upload Storage thất bại, đã lưu dưới dạng Base64. Lưu ý: Ảnh sẽ được lưu trực tiếp vào database.');
+        } else {
+          // File quá lớn, không thể dùng Base64
+          throw storageError;
+        }
+      }
+      
+      // Cập nhật form với URL từ Storage hoặc Base64
       if (type === 'PROJECT' && projectForm) {
         setProjectForm({ ...projectForm, logo_url: imageUrl });
       } else if (type === 'NEWS' && newsForm) {
@@ -74,10 +99,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setTemplateForm({ ...templateForm, imageUrl });
       }
       
-      alert('✅ Đã tải ảnh lên thành công!');
-    } catch (error) {
+      if (imageUrl.startsWith('data:')) {
+        alert('✅ Đã tải ảnh (Base64). Vui lòng lưu để hoàn tất.');
+      } else {
+        alert('✅ Đã tải ảnh lên Supabase Storage thành công!');
+      }
+    } catch (error: any) {
       console.error('Error uploading image:', error);
-      alert('❌ Lỗi khi tải ảnh lên. Vui lòng thử lại.');
+      const errorMessage = error?.message || 'Lỗi không xác định';
+      alert(`❌ ${errorMessage}\n\nVui lòng kiểm tra:\n1. Bucket "images" đã được tạo trong Supabase Storage\n2. RLS policies cho phép upload\n3. Biến môi trường VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY đã được cấu hình`);
     }
   };
 

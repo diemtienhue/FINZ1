@@ -33,6 +33,17 @@ type TemplateUpdate = Database['public']['Tables']['landing_page_templates']['Up
  */
 export async function uploadImageToStorage(file: File, folder: string = 'images'): Promise<string> {
   try {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File phải là ảnh (image)');
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      throw new Error('File quá lớn. Kích thước tối đa là 10MB');
+    }
+
     // Tạo tên file unique
     const fileExt = file.name.split('.').pop();
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -46,19 +57,42 @@ export async function uploadImageToStorage(file: File, folder: string = 'images'
       });
 
     if (error) {
-      console.error('Error uploading image:', error);
-      throw error;
+      console.error('Error uploading image to Storage:', error);
+      
+      // Xử lý các lỗi phổ biến
+      if (error.message?.includes('Bucket not found') || error.message?.includes('The resource was not found')) {
+        throw new Error('Bucket "images" chưa được tạo trong Supabase Storage. Vui lòng tạo bucket "images" trong Supabase Dashboard > Storage.');
+      } else if (error.message?.includes('new row violates row-level security policy') || error.message?.includes('RLS')) {
+        throw new Error('Chưa có quyền upload. Vui lòng kiểm tra RLS policies trong Supabase Storage > images bucket.');
+      } else if (error.message?.includes('duplicate')) {
+        throw new Error('File đã tồn tại. Vui lòng thử lại.');
+      } else {
+        throw new Error(`Lỗi upload: ${error.message || 'Không xác định'}`);
+      }
+    }
+
+    if (!data) {
+      throw new Error('Upload thành công nhưng không nhận được dữ liệu phản hồi');
     }
 
     // Lấy URL công khai
     const { data: { publicUrl } } = supabase.storage
       .from('images')
-      .getPublicUrl(fileName);
+      .getPublicUrl(data.path);
+
+    if (!publicUrl) {
+      throw new Error('Không thể lấy URL công khai của ảnh');
+    }
 
     return publicUrl;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to upload image to Storage:', error);
-    throw error;
+    // Nếu là lỗi đã được xử lý (có message), throw lại
+    if (error.message && !error.message.includes('Failed to upload')) {
+      throw error;
+    }
+    // Nếu là lỗi chưa xử lý, wrap lại với message rõ ràng
+    throw new Error(error.message || 'Lỗi không xác định khi upload ảnh');
   }
 }
 
